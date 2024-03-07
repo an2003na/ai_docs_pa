@@ -3,12 +3,14 @@
 #include <QString>
 #include <QVBoxLayout>
 
+
 clockInterface::clockInterface(QWidget* parent)
     :QWidget(parent)
 {
     QVBoxLayout* main_layout = new QVBoxLayout(this);
 
     title = new QLabel("Current time");
+    title->setStyleSheet("background-color : gray");
     main_layout->addWidget(title);
 
     current_time_label = new QLabel;
