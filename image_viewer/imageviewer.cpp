@@ -1,187 +1,93 @@
-#include "imageviewer.h"
+#include "imageViewer.h"
 
-#include <QVBoxLayout>
-#include <QPixmap>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QAction>
-#include <QTransform>
-
-imageViewer::imageViewer(QWidget* p)
-    :QWidget(p)
+imageViewer::imageViewer(QWidget* parent)
+    : QWidget(parent), scaleFactor(1.0), rotationAngle(0.0)
 {
-    QVBoxLayout* main_layout = new QVBoxLayout;
+    QVBoxLayout* layout = new QVBoxLayout(this);
 
-    operations = new QToolBar;
+    imageLabel = new QLabel;
+    imageLabel->setBackgroundRole(QPalette::Base);
+    imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    imageLabel->setScaledContents(true);
 
-    QAction* action_open = new QAction("Open");
-    operations->addAction(action_open);
+    QToolBar* toolBar = new QToolBar;
+    QAction* openAction = new QAction(tr("Open"));
+    QAction* zoomInAction = new QAction(tr("Zoom In"));
+    QAction* zoomOutAction = new QAction(tr("Zoom Out"));
+    QAction* rotateAction = new QAction(tr("Rotate"));
 
-    QAction* action_zoomin = new QAction("Zoom In");
-    operations->addAction(action_zoomin);
+    toolBar->addAction(openAction);
+    toolBar->addAction(zoomInAction);
+    toolBar->addAction(zoomOutAction);
+    toolBar->addAction(rotateAction);
 
-    QAction* action_zoomout = new QAction("Zoom out");
-    operations->addAction(action_zoomout);
+    layout->addWidget(toolBar);
+    layout->addWidget(imageLabel);
 
-    QAction* action_rotate = new QAction("Rotate");
-    operations->addAction(action_rotate);
+    connect(openAction, &QAction::triggered, this, &imageViewer::openImage);
+    connect(zoomInAction, &QAction::triggered, this, &imageViewer::zoomIn);
+    connect(zoomOutAction, &QAction::triggered, this, &imageViewer::zoomOut);
+    connect(rotateAction, &QAction::triggered, this, &imageViewer::rotateClockwise);
 
-    main_layout->addWidget(operations);
-    image = new QLabel;
-    connect(action_open, &QAction::triggered, this, &imageViewer::open_image);
-    connect(action_zoomin, &QAction::triggered, this, &imageViewer::zoomin_image);
-    connect(action_zoomout, &QAction::triggered, this, &imageViewer::zoomout_image);
-    connect(action_rotate, &QAction::triggered, this, &imageViewer::rotate_image);
-
-    main_layout->addWidget(image);
-
-    setLayout(main_layout);
+    setLayout(layout);
 }
 
-void imageViewer::open_image()
-{
-    QString image_path = QFileDialog::getOpenFileName(nullptr, "Open image", "", "Images (*.png *.jpg *.jpeg *.bmp *.gif)");
 
-    if (!image_path.isEmpty()) {
-        QPixmap new_pixmap(image_path);
-        if (new_pixmap.isNull()) {
-            QMessageBox::warning(nullptr, "Warning", "Unable to open the file!");
+void imageViewer::openImage()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open Image"), "", tr("Image Files (*.png *.jpg *.jpeg *.bmp *.gif)"));
+    if (!fileName.isEmpty()) {
+        QPixmap pixmap(fileName);
+        if (pixmap.isNull()) {
+            QMessageBox::warning(this, tr("Warning"), tr("Unable to open the file!"));
             return;
         }
-
-        // Clear the existing image
-        image->clear();
-
-        // Set the new pixmap and reset scale_factor and rotation_angle
-        image->setPixmap(new_pixmap);
+        imageLabel->setPixmap(pixmap);
+        scaleFactor = 1.0;
+        rotationAngle = 0.0;
+        resize(pixmap.width(), pixmap.height());
     }
 }
 
-void imageViewer::zoomin_image()
+void imageViewer::zoomIn()
 {
-    QPixmap current_pixmap = image->pixmap();
-    if (!current_pixmap.isNull()) {
-        qreal current_scale_factor = scale_factor;
-        scale_factor *= 1.1;
-        QPixmap scaled_pixmap = current_pixmap.scaled(current_pixmap.width() * scale_factor, current_pixmap.height() * scale_factor, Qt::KeepAspectRatio);
-        image->setPixmap(scaled_pixmap);
-        if (current_scale_factor != scale_factor) {
-            rotation_angle = 0.0; // Reset rotation angle if scaling changes
-        }
+    if (!imageLabel->pixmap()) {
+        return;
     }
+    scaleFactor *= 1.1;
+    updateImage();
 }
 
-void imageViewer::zoomout_image()
+void imageViewer::zoomOut()
 {
-    QPixmap current_pixmap = image->pixmap();
-    if (!current_pixmap.isNull()) {
-        qreal current_scale_factor = scale_factor;
-        scale_factor /= 1.1;
-        QPixmap scaled_pixmap = current_pixmap.scaled(current_pixmap.width() * scale_factor, current_pixmap.height() * scale_factor, Qt::KeepAspectRatio);
-        image->setPixmap(scaled_pixmap);
-        if (current_scale_factor != scale_factor) {
-            rotation_angle = 0.0; // Reset rotation angle if scaling changes
-        }
+    if (!imageLabel->pixmap()) {
+        return;
     }
+    scaleFactor /= 1.1;
+    updateImage();
 }
 
-void imageViewer::rotate_image()
+void imageViewer::rotateClockwise()
 {
-    QPixmap current_pixmap = image->pixmap();
-    if (!current_pixmap.isNull()) {
-        rotation_angle += 90;
-        QTransform transform;
-        transform.rotate(rotation_angle);
-        QPixmap rotated_pixmap = current_pixmap.transformed(transform);
-        image->setPixmap(rotated_pixmap);
-        scale_factor = 1.0; // Reset scale factor after rotation
+    if (!imageLabel->pixmap()) {
+        return;
     }
+    rotationAngle += 90.0;
+    updateImage();
 }
 
-
-/*
-void imageViewer::open_image()
+void imageViewer::updateImage()
 {
-    QString image_path = QFileDialog::getOpenFileName(nullptr, "Open image",  "", "Images (*.png *.jpg *.jpeg *.bmp *.gif)");
-  //  if(!image_path.isEmpty()) {
-        QPixmap new_pixmap(image_path);
-        if(new_pixmap.isNull()) {
-            QMessageBox::warning(nullptr, "Warning", "Unable to open the file!");
-            return;
-        }
-        image->setPixmap(new_pixmap);
-        scale_factor = 1.0;
-        rotation_angle = 0.0;
-  //  }
-}
-*/
-/*void imageViewer::open_image()
-{
-    QString image_path = QFileDialog::getOpenFileName(nullptr, "Open image",  "", "Images (*.png *.jpg *.jpeg *.bmp *.gif)");
-    if(image_path.isEmpty()) {
-        QMessageBox::warning(nullptr, "Warning", "There is no file selected!");
+    if (!imageLabel->pixmap()) {
+        return;
     }
-    QPixmap new_pixmap(image_path);
-    if(new_pixmap.isNull()) {
-        QMessageBox::warning(nullptr, "Warning", "Unable to open the file!");
-    }
-    image->setPixmap(new_pixmap);
+    QPixmap originalPixmap = imageLabel->pixmap();
+    QPixmap transformedPixmap = originalPixmap.transformed(QTransform().scale(scaleFactor, scaleFactor).rotate(rotationAngle));
+    imageLabel->setPixmap(transformedPixmap);
+    //    resize(transformedPixmap.size());
 }
 
-*/
-
-
-/*
-
-void imageViewer::zoomin_image()
-{
-
-}
-
-void imageViewer::zoomout_image()
-{
-
-}
-
-void imageViewer::rotate_image()
-{
-
-}
-
-*/
-/*
-void imageViewer::zoomin_image()
-{
-    if (!pixmap.isNull()) {
-        scale_factor *= 1.1;
-        QPixmap scaled_pixmap = pixmap.scaled(pixmap.width() * scale_factor, pixmap.height() * scale_factor, Qt::KeepAspectRatio);
-        image->setPixmap(scaled_pixmap);
-    }
-}
-
-void imageViewer::zoomout_image()
-{
-    if (!pixmap.isNull()) {
-        scale_factor /= 1.1;
-        QPixmap scaled_pixmap = pixmap.scaled(pixmap.width() * scale_factor, pixmap.height() * scale_factor, Qt::KeepAspectRatio);
-        image->setPixmap(scaled_pixmap);
-    }
-}
-
-void imageViewer::rotate_image()
-{
-    if (!pixmap.isNull()) {
-        rotation_angle += 90;
-        QTransform transform;
-        transform.rotate(rotation_angle);
-        QPixmap rotated_pixmap = pixmap.transformed(transform);
-        image->setPixmap(rotated_pixmap);
-    }
-}
-
-*/
 imageViewer::~imageViewer()
 {
-    delete image;
-    delete operations;
+    delete imageLabel;
 }

@@ -1,28 +1,35 @@
-#ifndef IMAGEVIEWER_H
-#define IMAGEVIEWER_H
+#ifndef IMAGEVIEWER_HPP
+#define IMAGEVIEWER_HPP
 
 #include <QWidget>
 #include <QLabel>
-#include <QToolBar>
+#include <QVBoxLayout>
 #include <QPixmap>
+#include <QFileDialog>
+#include <QAction>
+#include <QToolBar>
+#include <QMessageBox>
 
 class imageViewer : public QWidget
 {
-public:
-    imageViewer(QWidget* p = nullptr);
+    Q_OBJECT
 
+public:
+    imageViewer(QWidget* parent = nullptr);
     ~imageViewer();
+
 private slots:
-    void open_image();
-    void zoomin_image();
-    void zoomout_image();
-    void rotate_image();
+    void openImage();
+    void zoomIn();
+    void zoomOut();
+    void rotateClockwise();
 
 private:
-    QLabel* image;
-    QToolBar* operations;
-    qreal scale_factor = 1.0;
-    qreal rotation_angle = 0.0;
+    QLabel* imageLabel;
+    qreal scaleFactor;
+    qreal rotationAngle;
+
+    void updateImage();
 };
 
-#endif // IMAGEVIEWER_H
+#endif // IMAGEVIEWER_HPP
